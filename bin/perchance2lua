@@ -1,0 +1,105 @@
+#!/usr/bin/env lua
+--- perchance2lua: converts a Perchance generator's plain-text list
+-- syntax (the "Lists" panel content, copy-pasted from the perchance.org
+-- editor) into a standalone Lua script built on perchance-lib's
+-- native API. See README.md for the exact supported syntax subset
+-- and for why this tool exists instead of the runtime library
+-- parsing Perchance source directly.
+--
+-- Usage:
+--   perchance2lua <input.perchance> [-o <output.lua>] [--module-path <path>]
+--   perchance2lua < input.perchance > output.lua
+--   cat input.perchance | perchance2lua -o output.lua
+
+-- Resolve paths relative to this script's own location so it works
+-- regardless of the caller's current directory.
+local function scriptDir()
+  local source = debug.getinfo(1, "S").source:sub(2)
+  local dir = source:match("^(.*)[/\\][^/\\]+$")
+  return dir or "."
+end
+
+local SELF_DIR = scriptDir()
+package.path = SELF_DIR .. "/../lua/?.lua;"
+  .. SELF_DIR .. "/../lua/?/init.lua;"
+  .. SELF_DIR .. "/../?.lua;"
+  .. package.path
+
+local DslParser = require("tools.dslparser")
+local Codegen = require("tools.codegen")
+
+local function usage(exitCode)
+  io.stderr:write([[
+usage: perchance2lua <input.perchance> [-o <output.lua>] [--module-path <path>]
+       perchance2lua < input.perchance > output.lua
+
+Converts Perchance generator list-syntax source into a standalone
+Lua script that uses perchance-lib's native API. With no <input>,
+reads source from stdin. With no -o, writes the generated Lua to
+stdout.
+]])
+  os.exit(exitCode or 1)
+end
+
+local inputPath, outputPath, modulePath
+local i = 1
+while i <= #arg do
+  local a = arg[i]
+  if a == "-o" or a == "--output" then
+    i = i + 1
+    outputPath = arg[i]
+  elseif a == "--module-path" then
+    i = i + 1
+    modulePath = arg[i]
+  elseif a == "-h" or a == "--help" then
+    usage(0)
+  elseif a:sub(1, 1) == "-" then
+    io.stderr:write("perchance2lua: unknown flag '" .. a .. "'\n")
+    usage(1)
+  else
+    inputPath = a
+  end
+  i = i + 1
+end
+
+local src
+if inputPath then
+  local f, err = io.open(inputPath, "r")
+  if not f then
+    io.stderr:write("perchance2lua: couldn't open '" .. inputPath .. "': " .. tostring(err) .. "\n")
+    os.exit(1)
+  end
+  src = f:read("*a")
+  f:close()
+else
+  src = io.read("*a")
+end
+
+if not src or src:match("^%s*$") then
+  io.stderr:write("perchance2lua: no input source given\n")
+  usage(1)
+end
+
+local ok, astOrErr = pcall(DslParser.parse, src)
+if not ok then
+  io.stderr:write("perchance2lua: parse error: " .. tostring(astOrErr) .. "\n")
+  os.exit(1)
+end
+
+local lua = Codegen.generate(astOrErr, {
+  sourceName = inputPath,
+  outputName = outputPath,
+  modulePath = modulePath,
+})
+
+if outputPath then
+  local f, err = io.open(outputPath, "w")
+  if not f then
+    io.stderr:write("perchance2lua: couldn't write '" .. outputPath .. "': " .. tostring(err) .. "\n")
+    os.exit(1)
+  end
+  f:write(lua)
+  f:close()
+else
+  io.write(lua)
+end

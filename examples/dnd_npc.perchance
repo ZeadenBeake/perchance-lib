@@ -1,0 +1,37 @@
+output
+  {a} [job] [r = race] named [npcName[r]] (danger rating [dv = danger]/10). if (dv > 6) {They are dangerous, and best avoided.} else if (dv > 3) {They seem capable enough in a fight.} else {They are harmless.}
+
+danger = {1-10}
+
+race
+  human
+  elf
+  dwarf
+  halfling
+  half-orc^0.5
+
+npcName
+  human
+    Alden
+    Mirabel
+    Garrick
+  elf
+    Silvaren
+    Eliowen
+  dwarf
+    Thrain
+    Borgrim
+  halfling
+    Pip
+    Rosalind
+  half-orc
+    Grash
+    Uldara
+
+job
+  blacksmith
+  merchant^2
+  guard^3
+  innkeeper^2
+  wizard^0.3
+  thief^0.5

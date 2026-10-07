@@ -1,0 +1,17 @@
+title
+  [name], [epithet]
+
+name
+  [syllable][syllable]^3
+  [syllable][syllable][syllable]
+
+syllable
+  {Ka|Ko|Ra|Ro|Tha|Thi|Mor|Mir|Zan|Zar|El|Al|Dor|Dun}
+
+epithet
+  the Bold
+  the Wise
+  the Wanderer
+  the Shadowblade^2
+  of the Northern Reach
+  Dragonbane^0.5
