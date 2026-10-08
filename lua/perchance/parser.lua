@@ -12,7 +12,12 @@
 --   logicAnd   := equality ('&&' equality)*
 --   logicOr    := logicAnd ('||' logicAnd)*
 --   ternary    := logicOr ('?' expr ':' expr)?
---   expr       := IDENT '=' expr | ternary
+--   expr       := IDENT '=' expr | IDENT ':=' expr | ternary
+--
+-- `:=` is the same as `=` (bind IDENT, with the same bare-list-
+-- collapses-to-one-draw / consumableList-stays-a-handle semantics)
+-- except it evaluates to "" wherever it appears, instead of the
+-- assigned value -- i.e. it assigns silently, without also printing.
 local Lexer = require("perchance.lexer")
 
 local Parser = {}
@@ -168,6 +173,12 @@ function Parser:parseExpr()
     self:advance() -- '='
     local value = self:parseExpr()
     return { type = "Assign", name = name, value = value }
+  end
+  if self:check("ident") and self:peek(1).type == ":=" then
+    local name = self:advance().value
+    self:advance() -- ':='
+    local value = self:parseExpr()
+    return { type = "SilentAssign", name = name, value = value }
   end
   return self:parseTernary()
 end

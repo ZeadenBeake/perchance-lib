@@ -41,6 +41,21 @@ do
 end
 
 do
+  -- Regression (issue #2): `:=` is the silent-assignment form.
+  local ast = parses("c := hairColor", "silent assignment")
+  T:eq(ast.type, "SilentAssign", "silent assign type")
+  T:eq(ast.name, "c", "silent assign target name")
+  T:eq(ast.value.type, "Ident", "silent assign value is an ident")
+  T:eq(ast.value.name, "hairColor", "silent assign value name")
+end
+
+do
+  -- `:` for ternary still works unambiguously alongside `:=`.
+  local ast = parses('x > 0 ? "pos" : "neg"', "ternary still parses alongside :=")
+  T:eq(ast.type, "Ternary", "ternary type unaffected by := addition")
+end
+
+do
   local ast = parses("names[g].selectOne", "dynamic sub-list referencing")
   T:eq(ast.type, "Member", "outer node is member")
   T:eq(ast.name, "selectOne", "outer member name")

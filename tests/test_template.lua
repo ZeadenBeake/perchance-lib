@@ -18,6 +18,15 @@ T:eq(render("hello world", 1), "hello world", "literal text passes through")
 T:eq(render("literal \\[brackets\\] and \\{braces\\}", 1), "literal [brackets] and {braces}", "escapes")
 T:eq(render("a\\sb\\tc", 1), "a b\tc", "\\s and \\t escapes")
 
+-- Regression (issue #1): an unrecognized escape keeps its backslash
+-- instead of silently dropping it, so text meant for another
+-- consumer's own escaping rules (e.g. Stable Diffusion prompt
+-- syntax's `\(`/`\)` for literal parentheses) passes through intact.
+T:eq(render([[hair_ornament \(object\)]], 1), [[hair_ornament \(object\)]],
+  "unrecognized escape \\( \\) keeps its backslash")
+T:eq(render([[unknown \q escape]], 1), [[unknown \q escape]], "unrecognized escape \\q keeps its backslash generally")
+T:eq(render([[trailing backslash\]], 1), [[trailing backslash\]], "a trailing lone backslash is preserved, not dropped")
+
 do
   local ctx = Context.new({}, 1)
   local tpl = Template.compile("[1 + 2]")

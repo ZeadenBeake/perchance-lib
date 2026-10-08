@@ -117,6 +117,40 @@ do
   end
 end
 
+-- Regression (issue #2): `:=` assigns without printing, reusing the
+-- hair-color-across-several-tags scenario that motivated the
+-- request. Same consistency guarantee as `=`: every later read
+-- agrees with the first.
+do
+  local gen = perchance.new()
+  gen:list("hairColor", { "red", "blonde", "black" })
+  gen:alias("output", "[c := hairColor][c]_hair, [c]_tail")
+  gen:setRoot("output")
+
+  for i = 1, 20 do
+    local out = gen:run()
+    local a, b = out:match("^(%a+)_hair, (%a+)_tail$")
+    T:ok(a ~= nil, "silent-assign output has no leading printed value: " .. tostring(out))
+    if a then
+      T:eq(b, a, "both tags agree on the one silently-assigned hair color")
+    end
+  end
+end
+
+-- `:=` keeps the same consumableList-stays-a-handle exception as `=`.
+do
+  local gen = perchance.new()
+  gen:list("deck", { "red", "green", "blue" })
+  gen:alias("output", "[cl := deck.consumableList][cl.selectOne]-[cl.selectOne]-[cl.selectOne]")
+  gen:setRoot("output")
+  local out = gen:run(1)
+  local a, b, c = out:match("^(%a+)-(%a+)-(%a+)$")
+  T:ok(a ~= nil, "silent-assigned consumableList output parses: " .. tostring(out))
+  if a then
+    T:ok(a ~= b and a ~= c and b ~= c, "silent-assigned consumableList still draws three distinct cards: " .. out)
+  end
+end
+
 -- setRoot switches which definition :run() produces.
 do
   local gen = perchance.new()

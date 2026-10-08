@@ -6,7 +6,7 @@ local Lexer = {}
 local PUNCT_3 = {}
 local PUNCT_2 = {
   ["=="] = true, ["!="] = true, ["<="] = true, [">="] = true,
-  ["&&"] = true, ["||"] = true,
+  ["&&"] = true, ["||"] = true, [":="] = true,
 }
 local PUNCT_1 = {
   ["("] = true, [")"] = true, ["["] = true, ["]"] = true,

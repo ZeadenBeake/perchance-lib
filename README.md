@@ -109,6 +109,7 @@ set `LUA_PATH`, or pass `--module-path` to point the generated
 | `[a.pastTense]`, `.presentTense`, `.futureTense` | Best-effort tense transforms. |
 | `[a.possessiveForm]`, `.negativeForm` | `cat` -> `cat's`; `is` -> `is not`. |
 | `[name = expr]` | Assign `expr`'s value to variable `name`, *and* substitute it inline at this point too (matches Perchance's own behavior -- `[g = gender.selectOne]` both binds `g` and prints the chosen gender right there). Assigning a bare list reference locks in one concrete selection (so later reads of `name` all agree); the one exception is `.consumableList`, which stays a reusable handle. |
+| `[name := expr]` | Silent assignment: same binding as `=` (including the bare-list and `.consumableList` rules above), but evaluates to `""` instead of `expr`'s value -- use this when you want to pick something once and reuse it later without an extra copy printed where you picked it, e.g. `[c := hairColor][c]_hair, [c]_tail`. |
 | `x + y`, `-`, `*`, `/`, `%` | Arithmetic (numbers) or concatenation (`+` on non-numbers). |
 | `x == y`, `!=`, `<`, `>`, `<=`, `>=` | Comparisons (numeric if both sides coerce to numbers, string otherwise). |
 | `x && y`, `x \|\| y` | Short-circuiting, value-returning (JS-style, not boolean-coercing) and/or. |
@@ -144,6 +145,11 @@ condiment
 ### Escapes
 
 `\[` `\]` `\{` `\}` `\=` `\^` `\\` `\s` (literal space) `\t` (tab).
+Any other `\X` is left untouched, backslash and all, rather than
+having the backslash silently dropped -- so e.g. `\(object\)` passes
+through as literal `\(object\)` for consumers with their own escaping
+rules (Stable Diffusion prompt syntax uses `\(`/`\)` for literal
+parentheses).
 
 ### Top-level definitions (DSL file format only)
 
@@ -182,6 +188,7 @@ otherwise the first definition in the file is the root.
 | Input fields, buttons, dropdowns (interactive generators) | Not implemented -- explicitly out of scope ("generators that don't take inputs"). |
 | Image/audio/HTML plugins, arbitrary embedded JavaScript | Not implemented -- out of scope (text generation only). |
 | Seeded, fully reproducible output | Not available in real Perchance (`Math.random` isn't seedable) -- an **enhancement** here: every RNG draw goes through a portable, seedable generator (`perchance.RNG`), so `gen:run(seed)` is exactly reproducible across machines and Lua versions. |
+| Silent assignment (`:=`) | An **extension** beyond Perchance's own syntax, which only has the printing `=` form. Added here because "pick once, reuse several times, print nothing extra" is a common pattern (e.g. prompt-template generators) that `=` alone can't express without an awkward `&&`/`""` trick. |
 
 ## Known gotchas
 

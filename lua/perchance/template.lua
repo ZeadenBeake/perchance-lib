@@ -16,6 +16,11 @@
 --   anything else           treated as a plain expression
 --
 -- Escapes: \[ \] \{ \} \= \^ \\ \s \t
+-- Any other `\X` is left untouched (backslash and all) rather than
+-- having its backslash silently dropped -- so e.g. `\(` passes
+-- through as literal `\(`, which matters for text meant for another
+-- consumer that has its own escaping rules (Stable Diffusion prompt
+-- syntax uses `\(`/`\)` for literal parentheses).
 local Parser = require("perchance.parser")
 local Grammar = require("perchance.grammar")
 local Util = require("perchance.util")
@@ -318,7 +323,16 @@ function Template.compile(src)
     local c = src:sub(i, i)
     if c == "\\" then
       local nc = src:sub(i + 1, i + 1)
-      table.insert(buf, ESCAPES[nc] or nc)
+      if ESCAPES[nc] then
+        table.insert(buf, ESCAPES[nc])
+      else
+        -- Unrecognized escape: leave the backslash in place rather
+        -- than silently swallowing it. Lets text meant for another
+        -- consumer (e.g. `\(tag\)` in Stable Diffusion prompt
+        -- syntax) pass through unchanged instead of being corrupted.
+        table.insert(buf, "\\")
+        table.insert(buf, nc)
+      end
       i = i + 2
     elseif c == "[" then
       flushLiteral()

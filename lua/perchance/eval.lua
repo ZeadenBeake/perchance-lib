@@ -197,6 +197,22 @@ local function isConsumableListExpr(node)
   return false
 end
 
+-- Shared by Assign and SilentAssign: evaluate node.value, collapse a
+-- bare list reference (or navigation to one) to a single concrete
+-- selection so every later read of the variable agrees with it --
+-- e.g. `[r = race]` should lock in one race, not reroll on every
+-- `[r]`. The one deliberate exception is `.consumableList`, whose
+-- entire point is to hand back a reusable list *handle* rather than
+-- a draw. Returns the (possibly collapsed) value that got stored.
+local function assignTo(node, ctx)
+  local v = evalExpr(node.value, ctx)
+  if List.isList(v) and not isConsumableListExpr(node.value) then
+    v = v:selectOne(ctx, evalExpr)
+  end
+  ctx.vars[node.name] = v
+  return v
+end
+
 local DISPATCH = {
   Number = function(node) return node.value end,
   String = function(node) return node.value end,
@@ -213,18 +229,18 @@ local DISPATCH = {
     return evalExpr(node.b, ctx)
   end,
   Assign = function(node, ctx)
-    local v = evalExpr(node.value, ctx)
-    -- A bare list reference (or navigation to one) collapses to a
-    -- single concrete selection on assignment, e.g. `[r = race]`
-    -- should lock in one race and let every later `[r]` agree with
-    -- it -- otherwise each read would independently reroll. The one
-    -- deliberate exception is `.consumableList`, whose entire point
-    -- is to hand back a reusable list *handle* rather than a draw.
-    if List.isList(v) and not isConsumableListExpr(node.value) then
-      v = v:selectOne(ctx, evalExpr)
-    end
-    ctx.vars[node.name] = v
-    return v
+    return assignTo(node, ctx)
+  end,
+  -- Same binding semantics as Assign (including the bare-list-
+  -- collapses-to-one-draw / consumableList-stays-a-handle rules
+  -- below), but evaluates to "" instead of the assigned value --
+  -- i.e. it assigns without also printing. Useful for locking in a
+  -- value you only want to reuse later, e.g. `[c := hairColor]`
+  -- followed by `[c]_hair, [c]_tail` with no extra copy printed up
+  -- front.
+  SilentAssign = function(node, ctx)
+    assignTo(node, ctx)
+    return ""
   end,
 }
 
